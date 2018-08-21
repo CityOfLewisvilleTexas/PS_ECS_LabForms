@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>ECS Lab Results</title><!-- Reference jquery library -->
+    <!-- Links to a bootstrap style sheet -->
+    <link href='https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons' rel="stylesheet">
+    <link href="https://unpkg.com/vuetify/dist/vuetify.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+    <link rel="stylesheet" type="text/css" media="print" href="./print.css">
+    
+    <!--  COL Security file  -->
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
+    <script src="http://eservices.cityoflewisville.com/COLSecurity/col_security.js"></script>
+    
+    <style media="screen">
+      
+      html {   overflow-x: scroll !important; } 
+      
+      
+      .main-card {
+        background: #fff;
+        border-radius: 2px;
+        margin: 1rem auto;
+        margin-bottom: 24px;
+        border: 1px lightgray solid;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+        padding: 16px;
+        text-align: left;
+        max-width: 1800px;
+        width: 95%;
+        height: 100%;
+        padding-left: 30px;
+      }
+
+      .clickable {
+        cursor: pointer;
+      }
+
+    </style>
+  </head>
+  <body style=" position: relative; overflow-x: scroll !important; ">
+
+
+    <div id="app">
+      <v-app id="inspire">
+        <v-toolbar
+          color="purple darken-2"
+          dark
+          app
+          fixed
+        >
+          <v-toolbar-title style="width: 300px" class="ml-0 pl-3">
+            <span class="hidden-sm-and-down">Lab Values</span>
+          </v-toolbar-title>
+          <v-flex xs8 lg6>
+            <v-menu
+              ref="menu1"
+              :close-on-content-click="false"
+              v-model="menu1"
+              :nudge-right="40"
+              lazy
+              transition="scale-transition"
+              offset-y
+              full-width
+              max-width="290px"
+              min-width="290px"
+            >
+              <v-text-field
+                slot="activator"
+                v-model="start"
+                label="Start Date"
+                hint="MM/DD/YYYY format"
+                persistent-hint
+                prepend-icon="event"
+                @blur="date1 = parseDate(start)"
+              ></v-text-field>
+              <v-date-picker v-model="date1" no-title @input="menu1 = false"></v-date-picker>
+            </v-menu>
+          </v-flex>
+          <v-spacer></v-spacer>
+          <v-flex xs8 lg6>
+            <v-menu
+              ref="menu2"
+              :close-on-content-click="false"
+              v-model="menu2"
+              :nudge-right="40"
+              lazy
+              transition="scale-transition"
+              offset-y
+              full-width
+              max-width="290px"
+              min-width="290px"
+            >
+              <v-text-field
+                slot="activator"
+                v-model="end"
+                label="End Date"
+                hint="MM/DD/YYYY format"
+                persistent-hint
+                prepend-icon="event"
+                @blur="date2 = parseDate(end)"
+              ></v-text-field>
+              <v-date-picker v-model="date2" no-title @input="menu2 = false"></v-date-picker>
+            </v-menu>
+          </v-flex>
+          <v-spacer></v-spacer>
+          <v-btn
+            :loading="loading"
+            :disabled="loading"
+            color="secondary"
+            @click.native="fetchData"
+          >
+            Search
+          </v-btn>
+<!--
+          <v-btn icon>
+            <v-icon>apps</v-icon>
+          </v-btn>
+          <v-btn icon>
+            <v-icon>notifications</v-icon>
+          </v-btn>
+          <v-btn icon large>
+            <v-avatar size="32px" tile>
+              <img
+                src="https://vuetifyjs.com/static/doc-images/logo.svg"
+                alt="Vuetify"
+              >
+            </v-avatar>
+          </v-btn>
+-->
+        </v-toolbar>
+        <v-content>
+          
+          <psofia-modal 
+            :visible="display_modal" 
+            :set_date="selectedItemDate" 
+            :params="psofia_modal_params" 
+            @loading="loading = !loading" 
+            @close="display_modal=false" 
+            @fetch-data="refresh"
+          ></psofia-modal>
+          
+          <v-tooltip left>
+            <v-btn
+              slot="activator"
+              id="download-csv"
+              fab
+              bottom
+              right
+              color="pink"
+              dark
+              fixed
+              @click.stop="exportTableToCSV('NetDMR.csv')"
+            >
+              <v-icon>save_alt</v-icon>
+            </v-btn>
+            <span>Download to Excel</span>
+          </v-tooltip>
+          
+            
+          
+          
+          <v-container fluid fill-height>
+            <v-layout justify-left >
+              
+                <!--        MAIN CONTENT GOES HERE          -->
+                <v-data-table
+                  :headers="headers"
+                  :items="data"
+                  :loading="loading"
+                  hide-actions
+                >
+                  <v-progress-linear slot="progress" color="blue" indeterminate></v-progress-linear>
+                  <template slot="items" slot-scope="props">
+                    <td class="m-1">{{ props.item.day }}</td>
+                    <td class="text-xs-right m-1">{{ props.item.inf_flow }}</td>
+                    <td class="text-xs-right m-1">{{ props.item.eff_flow }}</td>
+                    <td class="text-xs-right m-1">{{ props.item.reuse }}</td>
+                    <td class="text-xs-right m-1">{{ props.item.total_eff_flow }}</td>
+                    <td class="text-xs-right m-1 clickable" @click="url(props.item.psofia_recordid_five, 84, props.item.day)" >{{ props.item.inf_bod }}</td>
+                    <td class="text-xs-right m-1 clickable" @click="url(props.item.psofia_recordid_prev, 83, props.item.day)">{{ props.item.inf_tss }}</td>
+                    <td class="text-xs-right m-1 clickable" @click="url(props.item.psofia_recordid_five, 84, props.item.day)">{{ props.item.eff_bod }}</td>
+                    <td class="text-xs-right m-1 clickable" @click="url(props.item.psofia_recordid_prev, 83, props.item.day)">{{ props.item.eff_tss }}</td>
+                    <td class="text-xs-right m-1 clickable" @click="url(props.item.psofia_recordid_cd, 82, props.item.day)">{{ props.item.eff_ph }}</td>
+                    <td class="text-xs-right m-1 clickable" @click="url(props.item.psofia_recordid_cd, 82, props.item.day)">{{ props.item.eff_do }}</td>
+                    <td class="text-xs-right m-1 clickable" @click="url(props.item.psofia_recordid_cd, 82, props.item.day)">{{ (parseFloat(props.item.basin_cl2) < 0.05) ? '<0.05' : props.item.basin_cl2 }}</td>
+                    <td class="text-xs-right m-1 clickable" @click="url(props.item.psofia_recordid_cd, 82, props.item.day)">{{ (parseFloat(props.item.flume_cl2) < 0.05) ? '<0.05' : props.item.flume_cl2 }}</td>
+                  </template>
+                  
+                  <template slot="footer" v-if="!loading">
+                    <tr class="blue lighten-3 p-1">
+                      <td class="m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Total')].day }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Total')].inf_flow }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Total')].eff_flow }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Total')].reuse }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Total')].total_eff_flow }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Total')].inf_bod }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Total')].inf_tss }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Total')].eff_bod }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Total')].eff_tss }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Total')].eff_ph }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Total')].eff_do }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Total')].basin_cl2 }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Total')].flume_cl2 }}</td>
+                    </tr>
+                    <tr class="green lighten-3 p-1">
+                      <td class="m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Avg')].day }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Avg')].inf_flow }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Avg')].eff_flow }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Avg')].reuse }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Avg')].total_eff_flow }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Avg')].inf_bod }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Avg')].inf_tss }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Avg')].eff_bod }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Avg')].eff_tss }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Avg')].eff_ph }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Avg')].eff_do }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Avg')].basin_cl2 }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Avg')].flume_cl2 }}</td>
+                    </tr>
+                    <tr class="orange lighten-3 p-1">
+                      <td class="m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Min')].day }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Min')].inf_flow }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Min')].eff_flow }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Min')].reuse }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Min')].total_eff_flow }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Min')].inf_bod }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Min')].inf_tss }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Min')].eff_bod }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Min')].eff_tss }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Min')].eff_ph }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Min')].eff_do }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Min')].basin_cl2 }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Min')].flume_cl2 }}</td>
+                    </tr>
+                    <tr class="grey lighten-3 p-1">
+                      <td class="m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Max')].day }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Max')].inf_flow }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Max')].eff_flow }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Max')].reuse }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Max')].total_eff_flow }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Max')].inf_bod }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Max')].inf_tss }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Max')].eff_bod }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Max')].eff_tss }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Max')].eff_ph }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Max')].eff_do }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Max')].basin_cl2 }}</td>
+                      <td class="text-xs-right m-1">{{ totalSection[totalSection.map(function(e) { return e.day; }).indexOf('Max')].flume_cl2 }}</td>
+                    </tr>
+                  </template>
+                </v-data-table>
+              </v-btn>
+              
+            </v-layout>
+          </v-container>
+        </v-content>
+      </v-app>
+    </div>
+    <!-- Vue.js library -->
+    <script src="https://unpkg.com/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/vuetify/dist/vuetify.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="./psofia_modal_component.js"></script>
+    <script src="./main.js"></script>
+  
+  </body>
+</html>
